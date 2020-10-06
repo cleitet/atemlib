@@ -2,9 +2,14 @@
 
 ## Introduction
 
+This tool was based on the MIT-licenced project at https://github.com/mintopia/atemlib
+
 This library is a collection of tools for working with Blackmagic ATEM video switchers. It is intended to be used as part of automation solutions.
 
 MediaUpload.exe allows you to upload images to specific slots in a BlackMagic ATEM switcher's media pool.
+
+MediaUpload.exe also allows you to upload images as clips to the clip pool for models that support clips. A clip is multiple files, each it's own frame that will be played back by the switcher. The tool will look for image files in the directory if a directory is given as an argument rather than a filename.
+
 MediaPool.exe lists all the media in the switcher's media pool.
 
 ## Usage
@@ -12,20 +17,25 @@ MediaPool.exe lists all the media in the switcher's media pool.
 ### Media Upload
 
 ```
-MediaUpload.exe [options] <hostname> <slot> <filename>
+Usage: mediaupload.exe [options] <hostname> <slot> <filename>
+Uploads an image or clip to a BlackMagic ATEM switcher
 
 Arguments:
 
- hostname            - The hostname or IP address of the switcher
- slot                - The slot to upload to
- filename            - The filename of the image to upload
+ hostname        - The hostname or IP of the ATEM switcher
+ slot            - The number of the media slot to upload to
+ file/directory  - The filename of the image to upload as still, or directory with images to upload as a clip
 
 Options:
 
- -h, --help          - Help information
- -d, --debug         - Enable debug output
- -v, --version       - View version information
- -n, --name          - Set the name of the image in the media pool
+ -h, --help      - This help message
+ -d, --debug     - Debug output
+ -v, --version   - Version information
+ -n, --name      - The name for the item in the media pool
+
+ Image Format:
+
+The image(s) must be the same resolution as the switcher. Accepted formats are BMP, JPEG, GIF, PNG and TIFF. Alpha channels are supported.
 ```
 
 Example:
@@ -33,6 +43,9 @@ Example:
 To upload myfile.png to Slot 1 on a switcher at 192.168.0.254:
 
     MediaUpload.exe 192.168.0.254 1 myfile.png
+
+To upload the image files in c:\images to media pool 1 at 192.168.0.254:
+    MediaUpload.exe 192.168.0.254 1 c:\images
 
 ### Media Pool
 
@@ -64,7 +77,7 @@ To view the output in JSON format:
 ## Requirements
 
  - [Microsoft .NET Framework 4.5](http://www.microsoft.com/en-gb/download/details.aspx?id=30653) 
- - [Blackmagic ATEM Switchers Update 7.3](https://www.blackmagicdesign.com/uk/support/family/atem-live-production-switchers) or later
+ - [Blackmagic ATEM Switchers Update 8.5](https://www.blackmagicdesign.com/uk/support/family/atem-live-production-switchers) or later
 
 ## Supported Image Formats
 
@@ -84,19 +97,11 @@ Images will need to be the same resolution as the switcher. Running in debug mod
 
 This has been tested with a Blackmagic Design ATEM Production Studio 4K. I do not have access to any other switchers to test with, but if they use version 6.2 or greater of the SDK, then they should work.
 
-
-## Contact Details
-
-If you're using this for anything interesting, I'd love to hear about it.
-
- - Web: http://www.mintopia.net
- - Email: jess@mintopia.net
- - Twitter: @MintopiaUK
-
- - Bitcoin: 1FhMKKabMSJx4M4Trm73JTTrALg7DmxbbP
- - Ethereum: 0x8063501c3944846579fb62aaAe3965d933638f35
-
 ## ChangeLog
+
+### Version 2.1.0 - 2020-10-06:
+ - Add support for media clips
+ - Built against Blackmagic Switcher SDK 8.5
 
 ### Version 2.0.2 - 2018-02-02:
  - Add support for NTSC SD
@@ -118,7 +123,8 @@ If you're using this for anything interesting, I'd love to hear about it.
 
 ## MIT License
 
-Copyright (C) 2016 by Jessica Smith
+Copyright (C) 2016 by Jessica Smith 
+Copyright (C) 2020 Chris Leitet
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

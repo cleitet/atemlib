@@ -1,6 +1,6 @@
 /Release
-/SwitcherLib/bin
-/MediaPool/bin
+/SwitcherLib/bin/Debug
+/MediaPool/bin/Debug
 /MediaUpload/bin
 /SwitcherLib/obj
 /MediaPool/obj
