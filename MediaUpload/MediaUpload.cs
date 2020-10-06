@@ -30,13 +30,13 @@ namespace MediaUpload
             ConsoleUtils.Version();
             Console.Out.WriteLine();
             Console.Out.WriteLine("Usage: mediaupload.exe [options] <hostname> <slot> <filename>");
-            Console.Out.WriteLine("Uploads an image to a BlackMagic ATEM switcher");
+            Console.Out.WriteLine("Uploads an image or clip to a BlackMagic ATEM switcher");
             Console.Out.WriteLine();
             Console.Out.WriteLine("Arguments:");
             Console.Out.WriteLine();
             Console.Out.WriteLine(" hostname        - The hostname or IP of the ATEM switcher");
             Console.Out.WriteLine(" slot            - The number of the media slot to upload to");
-            Console.Out.WriteLine(" filename        - The filename of the image to upload");
+            Console.Out.WriteLine(" file/directory  - The filename of the image to upload as still, or directory with images to upload as a clip");
             Console.Out.WriteLine();
             Console.Out.WriteLine("Options:");
             Console.Out.WriteLine();
@@ -47,7 +47,7 @@ namespace MediaUpload
             Console.Out.WriteLine();
             Console.Out.WriteLine("Image Format:");
             Console.Out.WriteLine();
-            Console.Out.WriteLine("The image must be the same resolution as the switcher. Accepted formats are BMP, JPEG, GIF, PNG and TIFF. Alpha channels are supported.");
+            Console.Out.WriteLine("The image(s) must be the same resolution as the switcher. Accepted formats are BMP, JPEG, GIF, PNG and TIFF. Alpha channels are supported.");
         }
 
         private static void ProcessArgs(string[] args)
@@ -110,7 +110,7 @@ namespace MediaUpload
             }
 
             Switcher switcher = new Switcher(args[0]);
-            int slot = MediaUpload.GetSlot(args[1]);
+            uint slot = MediaUpload.GetSlot(args[1]);
             Log.Debug(String.Format("Switcher: {0}", switcher.GetProductName()));
             Log.Debug(String.Format("Resolution: {0}x{1}", switcher.GetVideoWidth().ToString(), switcher.GetVideoHeight().ToString()));
             args.RemoveAt(0);
@@ -125,16 +125,16 @@ namespace MediaUpload
             upload.Start();
             while (upload.InProgress())
             {
-                Log.Info(String.Format("Progress: {0}%", upload.GetProgress().ToString()));
-                Thread.Sleep(100);
+                Log.Info(String.Format("Progress: {0}", upload.GetProgress()));
+                Thread.Sleep(1000);
             }
         }
 
-        private static int GetSlot(string arg)
+        private static uint GetSlot(string arg)
         {
             try
             {
-                return Convert.ToInt32(arg) - 1;
+                return Convert.ToUInt32(arg) - 1;
             }
             catch (Exception ex)
             {

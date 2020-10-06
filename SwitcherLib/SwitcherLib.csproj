@@ -40,7 +40,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Callbacks\Stills.cs" />
+    <Compile Include="Callbacks\Frame.cs" />
     <Compile Include="Callbacks\UploadLock.cs" />
     <Compile Include="ConsoleUtils.cs" />
     <Compile Include="Log.cs" />

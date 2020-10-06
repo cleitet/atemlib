@@ -11,6 +11,7 @@ using SwitcherLib.Callbacks;
 
 namespace SwitcherLib
 {
+
     public class Upload
     {
         private enum Status
@@ -21,27 +22,71 @@ namespace SwitcherLib
         }
 
         private Upload.Status currentStatus;
-        private String filename;
-        private int uploadSlot;
+        private String path;
+        private Array framepaths;
+        private bool isClip;
+        private uint uploadSlot;
+        private String currentframepath;
+        private UInt32 currentFrameNumber;
         private String name;
         private Switcher switcher;
         private IBMDSwitcherFrame frame;
         private IBMDSwitcherStills stills;
+        private IBMDSwitcherClip clip;
         private IBMDSwitcherLockCallback lockCallback;
+        private IBMDSwitcherMediaPool switcherMediaPool;
 
-        public Upload(Switcher switcher, String filename, int uploadSlot)
+        public Upload(Switcher switcher, String path, uint uploadSlot)
         {
+            this.isClip = false;
             this.switcher = switcher;
-            this.filename = filename;
+            this.path = path;
             this.uploadSlot = uploadSlot;
-
-            if (!File.Exists(filename))
-            {
-                throw new SwitcherLibException(String.Format("{0} does not exist", filename));
-            }
-
             this.switcher.Connect();
+            this.switcherMediaPool = (IBMDSwitcherMediaPool)this.switcher.GetSwitcher();
+            this.clip = this.GetClip();
             this.stills = this.GetStills();
+
+            // Is a directory of clips
+            if (Directory.Exists(path))
+            {
+                this.isClip = true;
+                this.framepaths = (Array)Directory.GetFiles(path, "*.bmp").OrderBy(f => f).ToArray();
+                if (this.framepaths.Length < 1)
+                    this.framepaths = (Array)Directory.GetFiles(path, "*.jpg").OrderBy(f => f).ToArray();
+                if (this.framepaths.Length < 1)
+                    this.framepaths = (Array)Directory.GetFiles(path, "*.jpeg").OrderBy(f => f).ToArray();
+                if (this.framepaths.Length < 1)
+                    this.framepaths = (Array)Directory.GetFiles(path, "*.gif").OrderBy(f => f).ToArray();
+                if (this.framepaths.Length < 1)
+                    this.framepaths = (Array)Directory.GetFiles(path, "*.png").OrderBy(f => f).ToArray();
+                if (this.framepaths.Length < 1)
+                    this.framepaths = (Array)Directory.GetFiles(path, "*.tiff").OrderBy(f => f).ToArray();
+                if (this.framepaths.Length < 1)
+                    this.framepaths = (Array)Directory.GetFiles(path, "*.tif").OrderBy(f => f).ToArray();
+                if (this.framepaths.Length < 1)
+                    throw new SwitcherLibException(String.Format("No bmp, jpg, jpeg, gif, png, tiff or tif files found in {0}", path));
+                Log.Debug(String.Format("Found {0} media files in {1}", this.framepaths.Length, path));
+
+
+                UInt32 maxclips;
+                this.switcherMediaPool.GetFrameTotalForClips(out maxclips);
+                // Checking whether the files can fit
+                if (maxclips < this.framepaths.Length)
+                {
+                    throw new SwitcherLibException(String.Format("The clip pool can contain up to {0} clips, but there are {1} files found in {2}", maxclips, this.framepaths.Length, this.path));
+                }
+            }
+            // Is a file with a still
+            else if (File.Exists(path))
+            {
+                this.currentframepath = path;
+                
+            }
+            else
+            {
+                throw new SwitcherLibException(String.Format("The file or directory {0} could not be found", path));
+            }
         }
 
         public bool InProgress()
@@ -54,23 +99,45 @@ namespace SwitcherLib
             this.name = name;
         }
 
-        public int GetProgress()
+        public string GetProgress()
         {
             if (this.currentStatus == Upload.Status.NotStarted)
             {
-                return 0;
+                return "0%";
             }
             if (this.currentStatus == Upload.Status.Completed)
             {
-                return 100;
+                return "100%";
             }
 
             double progress;
-            this.stills.GetProgress(out progress);
-            return (int)Math.Round(progress * 100.0);
+            if (this.isClip)
+            {
+
+                progress = (double)(this.currentFrameNumber + 1) / (double)this.framepaths.Length;
+                return String.Format("{0} of {1} frames - {2}%", this.currentFrameNumber + 1, this.framepaths.Length, (int)Math.Round(progress * 100.0));
+            } else
+            {
+                this.stills.GetProgress(out progress);
+                return String.Format("{0}%", (int)Math.Round(progress * 100.0));
+            }
+
+            
         }
 
         public void Start()
+        {
+            if (this.isClip)
+            {
+                this.StartClipUpload();
+            }
+            else
+            {
+                this.StartStillUpload();
+            }
+        }
+
+        protected void StartStillUpload()
         {
             this.currentStatus = Upload.Status.Started;
             this.frame = this.GetFrame();
@@ -78,11 +145,17 @@ namespace SwitcherLib
             this.stills.Lock(this.lockCallback);
         }
 
+        protected void StartClipUpload()
+        {
+            this.currentStatus = Upload.Status.Started;
+            this.lockCallback = (IBMDSwitcherLockCallback)new UploadLock(this);
+            this.clip.Lock(this.lockCallback);
+        }
+
         protected IBMDSwitcherFrame GetFrame()
         {
-            IBMDSwitcherMediaPool switcherMediaPool = (IBMDSwitcherMediaPool)this.switcher.GetSwitcher();
             IBMDSwitcherFrame frame;
-            switcherMediaPool.CreateFrame(_BMDSwitcherPixelFormat.bmdSwitcherPixelFormat8BitARGB, (uint)this.switcher.GetVideoWidth(), (uint)this.switcher.GetVideoHeight(), out frame);
+            this.switcherMediaPool.CreateFrame(_BMDSwitcherPixelFormat.bmdSwitcherPixelFormat8BitARGB, (uint)this.switcher.GetVideoWidth(), (uint)this.switcher.GetVideoHeight(), out frame);
             IntPtr buffer;
             frame.GetBytes(out buffer);
             byte[] source = this.ConvertImage();
@@ -94,7 +167,7 @@ namespace SwitcherLib
         {
             try
             {
-                Bitmap image = new Bitmap(this.filename);
+                Bitmap image = new Bitmap(this.currentframepath);
 
                 if (image.Width != this.switcher.GetVideoWidth() || image.Height != this.switcher.GetVideoHeight())
                 {
@@ -128,28 +201,89 @@ namespace SwitcherLib
 
         protected IBMDSwitcherStills GetStills()
         {
-            IBMDSwitcherMediaPool switcherMediaPool = (IBMDSwitcherMediaPool)this.switcher.GetSwitcher();
             IBMDSwitcherStills stills;
-            switcherMediaPool.GetStills(out stills);
+            this.switcherMediaPool.GetStills(out stills);
             return stills;
         }
+
+        protected IBMDSwitcherClip GetClip()
+        {
+            IBMDSwitcherClip clip;
+            this.switcherMediaPool.GetClip(this.uploadSlot, out clip);
+            return clip;
+       }
 
         public void UnlockCallback()
         {
             this.currentStatus = Upload.Status.Completed;
         }
 
-        public void LockCallback()
+        public void onPoolLockObtained()
         {
-            IBMDSwitcherStillsCallback callback = (IBMDSwitcherStillsCallback)new Stills(this);
-            this.stills.AddCallback(callback);
-            this.stills.Upload((uint)this.uploadSlot, this.GetName(), this.frame);
+            if (this.isClip)
+            {
+                Log.Debug("Clearing clip slot");
+                this.clip.SetInvalid();
+
+                // Uploading the first frame, the callback event handling will trigger upload of the rest.
+                this.currentFrameNumber = 0;
+                IBMDSwitcherClipCallback callback = new ClipFrame(this);
+                this.clip.AddCallback(callback);
+                this.uploadClipFrame();
+            }
+            else
+            {
+                IBMDSwitcherStillsCallback callback = new StillsFrame(this);
+                this.stills.AddCallback(callback);
+                this.stills.Upload((uint)this.uploadSlot, this.GetName(), this.frame);
+            }
         }
 
-        public void TransferCompleted()
+        protected void uploadClipFrame()
+        {
+            // Switcher frame counter is 1-indexed while this.framepaths is 0-indexed
+            this.currentframepath = (string)this.framepaths.GetValue(this.currentFrameNumber);
+            this.frame = this.GetFrame();
+            Log.Debug(String.Format("Uploading clip frame {0}: {1}", this.currentFrameNumber+1, this.currentframepath));
+            
+            //UploadFrame triggers onClipFrameUploadCompleted via a callback when finished
+            this.clip.UploadFrame(this.currentFrameNumber, this.frame);
+        }
+
+        public void onClipFrameUploadCompleted(uint frameIndex)
+        {
+            Log.Debug(String.Format("Uploading of clip frame {0} finished", frameIndex));
+            // process the next frame
+            if (frameIndex < this.framepaths.Length-1)
+            {
+                this.currentFrameNumber = frameIndex + 1;
+                this.uploadClipFrame();
+            }
+            else // is  finished
+            {
+                this.clip.SetValid(this.GetName(), frameIndex);
+                this.onFinished();
+            }
+            
+        }
+
+        public void onStillsFrameUploadCompleted()
+        {
+            onFinished();
+        }
+
+        protected void onFinished()
         {
             Log.Debug("Completed upload");
-            this.stills.Unlock(this.lockCallback);
+            if (this.isClip)
+            {
+                this.clip.Unlock(this.lockCallback);
+            }
+            else
+            {
+                this.stills.Unlock(this.lockCallback);
+            }
+
             this.currentStatus = Upload.Status.Completed;
         }
 
@@ -159,7 +293,15 @@ namespace SwitcherLib
             {
                 return this.name;
             }
-            return Path.GetFileNameWithoutExtension(this.filename);
+
+            if (this.isClip) {
+                return new DirectoryInfo(this.path).Name;
+            }
+            else
+            {
+                return Path.GetFileNameWithoutExtension(this.path);
+            }
+            
         }
     }
 }

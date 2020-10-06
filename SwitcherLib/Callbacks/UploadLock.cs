@@ -18,8 +18,8 @@ namespace SwitcherLib.Callbacks
 
         public void Obtained()
         {
-            Log.Debug("Still upload lock obtained");
-            this.upload.LockCallback();
+            Log.Debug("Media Pool lock obtained");
+            this.upload.onPoolLockObtained();
         }
     }
 }
