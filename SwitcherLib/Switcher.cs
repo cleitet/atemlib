@@ -1,6 +1,7 @@
 ﻿using BMDSwitcherAPI;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -123,22 +124,40 @@ namespace SwitcherLib
             }
         }
 
-        public IList<MediaStill> GetStills()
+        public IList<MediaSlot> getMediaSlots()
         {
-            IList<MediaStill> list = new List<MediaStill>();
+            IList<MediaSlot> list = new List<MediaSlot>();
 
             IBMDSwitcherMediaPool switcherMediaPool = (IBMDSwitcherMediaPool)this.switcher;
 
+
+            // Handling the stills
             IBMDSwitcherStills stills;
             switcherMediaPool.GetStills(out stills);
 
-            uint count;
-            stills.GetCount(out count);
-            for (uint index = 0; index < count; index++)
+            uint stillsCount;
+            stills.GetCount(out stillsCount);
+            Log.Debug(string.Format("The unit has {0} stills slots", stillsCount));
+
+            for (uint index = 0; index < stillsCount; index++)
             {
-                MediaStill mediaStill = new MediaStill(stills, index);
+                MediaSlot mediaStill = new MediaSlot(stills, index);
                 list.Add(mediaStill);
             }
+
+            // Handling the clips
+            IBMDSwitcherClip clip;
+            uint clipCount;
+            switcherMediaPool.GetClipCount(out clipCount);
+            Log.Debug(String.Format("The unit has {0} clip slots", clipCount));
+
+            for (uint index = 0; index < clipCount; index++)
+            {
+                switcherMediaPool.GetClip(index, out clip);
+                MediaSlot mediaClip = new MediaSlot(clip, index);
+                list.Add(mediaClip);
+            }
+
 
             IntPtr mediaPlayerIteratorPtr;
             Guid mediaIteratorIID = typeof(IBMDSwitcherMediaPlayerIterator).GUID;
@@ -147,25 +166,34 @@ namespace SwitcherLib
 
             IBMDSwitcherMediaPlayer mediaPlayer;
             mediaPlayerIterator.Next(out mediaPlayer);
-            int num1 = 1;
+            int currentMediaPlayerSlot = 1;
             while (mediaPlayer != null)
             {
-                _BMDSwitcherMediaPlayerSourceType type;
+                _BMDSwitcherMediaPlayerSourceType mediaPlayerSourceType;
+                string mediaPlayerSlotType = "";
                 uint index;
-                mediaPlayer.GetSource(out type, out index);
-                if (type == _BMDSwitcherMediaPlayerSourceType.bmdSwitcherMediaPlayerSourceTypeStill)
+                mediaPlayer.GetSource(out mediaPlayerSourceType, out index);
+
+                if (mediaPlayerSourceType == _BMDSwitcherMediaPlayerSourceType.bmdSwitcherMediaPlayerSourceTypeStill)
                 {
-                    int num2 = (int)index + 1;
-                    foreach (MediaStill mediaStill in list)
+                    mediaPlayerSlotType = "Still";
+                }
+                else if (mediaPlayerSourceType == _BMDSwitcherMediaPlayerSourceType.bmdSwitcherMediaPlayerSourceTypeClip)
+                {
+                    mediaPlayerSlotType = "Clip";
+                }
+
+                int mediaSlotUsedByMediaPlayer = (int)index + 1;
+                foreach (MediaSlot mediaSlot in list)
+                 {
+                    if (currentMediaPlayerSlot == mediaSlot.Slot && mediaPlayerSlotType == mediaSlot.Type )
                     {
-                        if (mediaStill.Slot == num2)
-                        {
-                            mediaStill.MediaPlayer = num1;
-                            break;
-                        }
+                        mediaSlot.MediaPlayer = currentMediaPlayerSlot;
+                        break;
                     }
                 }
-                num1++;
+                
+                currentMediaPlayerSlot++;
                 mediaPlayerIterator.Next(out mediaPlayer);
             }
             return list;

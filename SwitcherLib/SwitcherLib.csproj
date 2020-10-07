@@ -42,9 +42,9 @@
   <ItemGroup>
     <Compile Include="Callbacks\Frame.cs" />
     <Compile Include="Callbacks\UploadLock.cs" />
+    <Compile Include="MediaSlot.cs" />
     <Compile Include="ConsoleUtils.cs" />
     <Compile Include="Log.cs" />
-    <Compile Include="MediaStill.cs" />
     <Compile Include="Switcher.cs" />
     <Compile Include="Upload.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

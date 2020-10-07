@@ -129,39 +129,40 @@ namespace MediaPool
 
             Switcher switcher = new Switcher(args[0]);
             Log.Debug(String.Format("Switcher: {0}", switcher.GetProductName()));
-            IList<MediaStill> stills = switcher.GetStills();
+            IList<MediaSlot> mediaslots = switcher.getMediaSlots();
 
             switch (format)
             {
                 case MediaPool.Format.Text:
-                    foreach (MediaStill still in stills)
+                    foreach (MediaSlot slot in mediaslots)
                     {
                         Console.Out.WriteLine();
-                        Console.Out.WriteLine(String.Format("         Name: {0}", still.Name));
-                        Console.Out.WriteLine(String.Format("         Hash: {0}", still.Hash));
-                        Console.Out.WriteLine(String.Format("         Slot: {0}", still.Slot.ToString()));
-                        Console.Out.WriteLine(String.Format(" Media Player: {0}", still.MediaPlayer.ToString()));
+                        Console.Out.WriteLine(String.Format("         Type: {0}", slot.Type));
+                        Console.Out.WriteLine(String.Format("         Name: {0}", slot.Name));
+                        Console.Out.WriteLine(String.Format("         Hash: {0}", slot.Hash));
+                        Console.Out.WriteLine(String.Format("         Slot: {0}", slot.Slot.ToString()));
+                        Console.Out.WriteLine(String.Format(" Media Player: {0}", slot.MediaPlayer.ToString()));
                     }
                     break;
 
                 case MediaPool.Format.JSON:
-                    Console.Out.WriteLine(JsonConvert.SerializeObject(stills));
+                    Console.Out.WriteLine(JsonConvert.SerializeObject(mediaslots));
                     break;
 
                 case MediaPool.Format.XML:
-                    XmlSerializer xml = new XmlSerializer(stills.GetType());
-                    xml.Serialize(Console.Out, stills);
+                    XmlSerializer xml = new XmlSerializer(mediaslots.GetType());
+                    xml.Serialize(Console.Out, mediaslots);
                     break;
 
                 case MediaPool.Format.CSV:
-                    foreach (MediaStill still in stills)
+                    foreach (MediaSlot slot in mediaslots)
                     {
-                        Console.Out.WriteLine(still.ToCSV());
+                        Console.Out.WriteLine(slot.ToCSV());
                     }
                     break;
 
                 default:
-                    Console.Out.WriteLine(stills.ToString());
+                    Console.Out.WriteLine(mediaslots.ToString());
                     break;
             }
         }
