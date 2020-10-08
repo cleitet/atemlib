@@ -44,8 +44,7 @@ namespace SwitcherLib
             this.uploadSlot = uploadSlot;
             this.switcher.Connect();
             this.switcherMediaPool = (IBMDSwitcherMediaPool)this.switcher.GetSwitcher();
-            this.clip = this.GetClip();
-            this.stills = this.GetStills();
+            
 
             // Is a directory of clips
             if (Directory.Exists(path))
@@ -68,6 +67,8 @@ namespace SwitcherLib
                     throw new SwitcherLibException(String.Format("No bmp, jpg, jpeg, gif, png, tiff or tif files found in {0}", path));
                 Log.Debug(String.Format("Found {0} media files in {1}", this.framepaths.Length, path));
 
+                this.clip = this.GetClip();
+
 
                 UInt32 maxclips;
                 this.switcherMediaPool.GetFrameTotalForClips(out maxclips);
@@ -81,7 +82,8 @@ namespace SwitcherLib
             else if (File.Exists(path))
             {
                 this.currentframepath = path;
-                
+                this.stills = this.GetStills();
+
             }
             else
             {
